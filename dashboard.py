@@ -30,15 +30,18 @@ if not data:
 import pandas as pd
 df = pd.DataFrame(data)
 
-col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
+col1, col2, col3, col4, col5 = st.columns(5)
 col1.metric("Games", len(df))
 col2.metric("Total Steps", f"{df['steps'].iloc[-1]:,}")
 col3.metric("Total Goals", int(df["goals"].sum()))
 col4.metric("Best Reward", f"{df['reward'].max():.1f}")
 col5.metric("Latest Reward", f"{df['reward'].iloc[-1]:.1f}")
-col6.metric("TGPT (Sim)", f"{df['tgpt'].iloc[-1] / 3600:.1f}h")
-col7.metric("TGPTT (Real)", f"{df['tgptt'].iloc[-1] / 3600:.1f}h")
-col8.metric("Speed", f"{df['tgpt'].iloc[-1] / df['tgptt'].iloc[-1]:.1f}x")
+
+if "tgpt" in df.columns and "tgptt" in df.columns and df["tgptt"].iloc[-1] > 0:
+    col6, col7, col8 = st.columns(3)
+    col6.metric("TGPT (Sim)", f"{df['tgpt'].iloc[-1] / 3600:.1f}h")
+    col7.metric("TGPTT (Real)", f"{df['tgptt'].iloc[-1] / 3600:.1f}h")
+    col8.metric("Speed", f"{df['tgpt'].iloc[-1] / df['tgptt'].iloc[-1]:.1f}x")
 
 st.subheader("Reward per Game")
 st.line_chart(df.set_index("game")["reward"], use_container_width=True)
@@ -50,10 +53,13 @@ st.subheader("Loss per Game")
 st.line_chart(df.set_index("game")["loss"], use_container_width=True)
 
 st.subheader("Recent Games")
-recent = df.tail(20)[["game", "steps", "reward", "loss", "goals", "game_time"]].copy()
+cols = ["game", "steps", "reward", "loss", "goals"]
+if "game_time" in df.columns:
+    cols.append("game_time")
+recent = df.tail(20)[cols].copy()
 recent["reward"] = recent["reward"].round(1)
 recent["loss"] = recent["loss"].round(4)
-recent.columns = ["Game", "Steps", "Reward", "Loss", "Goals", "Time (s)"]
+recent.columns = [c.replace("game_time", "Time (s)").replace("game", "Game").replace("steps", "Steps").replace("reward", "Reward").replace("loss", "Loss").replace("goals", "Goals") for c in recent.columns]
 st.dataframe(recent, use_container_width=True)
 
 if st.sidebar.button("Refresh"):

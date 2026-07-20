@@ -18,7 +18,7 @@ if __name__ == "__main__":
         games = input("How many games? [100]: ").strip() or "100"
         save_every = input("Save every N games? [10]: ").strip() or "10"
         print(f"\nStarting RL training ({games} games)...")
-        subprocess.run([sys.executable, "collect.py", "--games", games, "--save-every", save_every])
+        subprocess.run([sys.executable, "-u", "collect.py", "--games", games, "--save-every", save_every])
 
     elif mode == "2":
         print("\nOpening dashboard on http://localhost:8501...")
@@ -39,7 +39,7 @@ if __name__ == "__main__":
         t.start()
         print("\nDashboard on http://localhost:8501")
         print(f"Starting RL training ({games} games)...\n")
-        subprocess.run([sys.executable, "collect.py", "--games", games, "--save-every", save_every])
+        subprocess.run([sys.executable, "-u", "collect.py", "--games", games, "--save-every", save_every])
 
     print("\nDone! Press Enter to exit.")
     input()

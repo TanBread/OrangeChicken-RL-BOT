@@ -42,6 +42,8 @@ def run_benchmark(n_envs, groups, duration=10):
     q_ins = []
     q_outs = []
     workers = []
+
+    t0 = time.time()
     for _ in range(groups):
         q_in = Queue()
         q_out = Queue()
@@ -50,10 +52,13 @@ def run_benchmark(n_envs, groups, duration=10):
         q_ins.append(q_in)
         q_outs.append(q_out)
         workers.append(p)
+    t1 = time.time()
+    print(f"  Spawn time: {t1 - t0:.1f}s ({groups} workers, {total_envs} envs)")
 
     model = ActorCritic(OBS_SIZE, ACT_SIZE).cuda()
     start = time.time()
 
+    first_game = None
     while time.time() - start < duration:
         all_obs = []
         alive = []
@@ -65,6 +70,10 @@ def run_benchmark(n_envs, groups, duration=10):
 
         if not all_obs:
             break
+
+        if first_game is None:
+            first_game = time.time() - start
+            print(f"  First obs ready: {first_game:.1f}s after benchmark start")
 
         obs_tensor = torch.tensor(np.array(all_obs), dtype=torch.float32).cuda()
         with torch.no_grad():
@@ -100,5 +109,10 @@ def run_benchmark(n_envs, groups, duration=10):
 
 if __name__ == '__main__':
     torch.cuda.set_device(0)
-    print("=== 60s games, 192 envs (6x32), 120s benchmark ===")
-    run_benchmark(32, 6, duration=120)
+    t_import = time.time()
+    print("=== 60s games, 192 envs (6x32), 60s benchmark ===")
+    tgs = run_benchmark(32, 6, duration=60)
+    total_startup = time.time() - t_import
+    tgm = tgs * 60
+    print(f"\nResult: {tgm:.0f} TG/m")
+    print(f"Total startup: {total_startup:.1f}s")
