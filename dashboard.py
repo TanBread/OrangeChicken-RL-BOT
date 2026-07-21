@@ -6,8 +6,8 @@ BASE_DIR = Path(__file__).parent.absolute()
 LOG_DIR = BASE_DIR / "logs"
 METRICS_FILE = LOG_DIR / "metrics.jsonl"
 
-st.set_page_config(page_title="RL Training", layout="wide")
-st.title("RL Training Dashboard")
+st.set_page_config(page_title="OrangeChicken RL", layout="wide")
+st.title("OrangeChicken RL")
 
 
 @st.cache_data(ttl=2)
@@ -28,39 +28,63 @@ if not data:
     st.stop()
 
 import pandas as pd
+import plotly.graph_objects as go
+
 df = pd.DataFrame(data)
 
-col1, col2, col3, col4, col5 = st.columns(5)
-col1.metric("Games", len(df))
-col2.metric("Total Steps", f"{df['steps'].iloc[-1]:,}")
-col3.metric("Total Goals", int(df["goals"].sum()))
-col4.metric("Best Reward", f"{df['reward'].max():.1f}")
-col5.metric("Latest Reward", f"{df['reward'].iloc[-1]:.1f}")
+c1, c2, c3, c4, c5 = st.columns(5)
+c1.metric("Games", f"{len(df):,}")
+def fmt_steps(n):
+    if n >= 1_000_000:
+        return f"{n/1_000_000:.1f}M"
+    return f"{n:,}"
 
-if "tgpt" in df.columns and "tgptt" in df.columns and df["tgptt"].iloc[-1] > 0:
-    col6, col7, col8 = st.columns(3)
-    col6.metric("TGPT (Sim)", f"{df['tgpt'].iloc[-1] / 3600:.1f}h")
-    col7.metric("TGPTT (Real)", f"{df['tgptt'].iloc[-1] / 3600:.1f}h")
-    col8.metric("Speed", f"{df['tgpt'].iloc[-1] / df['tgptt'].iloc[-1]:.1f}x")
+c2.metric("Steps", fmt_steps(df['steps'].iloc[-1]))
+c3.metric("Goals/Game (last 1k)", f"{df.tail(1000)['goals'].sum() / min(1000, len(df)):.2f}")
+c4.metric("Rewards/Match", f"{df['reward'].mean():.0f}")
+if "tgpt" in df.columns and len(df) > 1 and df["total_time"].iloc[-1] > 0:
+    c5.metric("TG/m", f"{df['tgpt'].iloc[-1]:.0f}")
 
-st.subheader("Reward per Game")
-st.line_chart(df.set_index("game")["reward"], use_container_width=True)
+st.divider()
 
-st.subheader("Goals per Game")
-st.bar_chart(df.set_index("game")["goals"], use_container_width=True)
+col_left, col_right = st.columns(2)
 
-st.subheader("Loss per Game")
-st.line_chart(df.set_index("game")["loss"], use_container_width=True)
+with col_left:
+    st.subheader("Reward (last 500 games)")
+    last500 = df.tail(500)
+    fig_reward = go.Figure()
+    fig_reward.add_trace(go.Scatter(
+        x=last500["game"], y=last500["reward"],
+        mode="lines",
+        line=dict(color="#636EFA", width=1.5, shape="linear"),
+        name="Reward"
+    ))
+    fig_reward.update_layout(
+        xaxis_title="Game", yaxis_title="Reward",
+        template="plotly_dark",
+        height=400, margin=dict(l=40, r=20, t=20, b=40)
+    )
+    st.plotly_chart(fig_reward, use_container_width=True)
 
-st.subheader("Recent Games")
-cols = ["game", "steps", "reward", "loss", "goals"]
-if "game_time" in df.columns:
-    cols.append("game_time")
-recent = df.tail(20)[cols].copy()
-recent["reward"] = recent["reward"].round(1)
-recent["loss"] = recent["loss"].round(4)
-recent.columns = [c.replace("game_time", "Time (s)").replace("game", "Game").replace("steps", "Steps").replace("reward", "Reward").replace("loss", "Loss").replace("goals", "Goals") for c in recent.columns]
-st.dataframe(recent, use_container_width=True)
+with col_right:
+    st.subheader("Goals (last 500 games)")
+    last500 = df.tail(500)
+    fig_goals = go.Figure()
+    fig_goals.add_trace(go.Scatter(
+        x=last500["game"], y=last500["goals"],
+        mode="lines",
+        line=dict(color="#00CC96", width=1.5, shape="linear"),
+        name="Goals"
+    ))
+    fig_goals.update_layout(
+        xaxis_title="Game", yaxis_title="Goals",
+        yaxis=dict(rangemode="tozero"),
+        template="plotly_dark",
+        height=400, margin=dict(l=40, r=20, t=20, b=40)
+    )
+    st.plotly_chart(fig_goals, use_container_width=True)
+
+st.divider()
 
 if st.sidebar.button("Refresh"):
     st.cache_data.clear()

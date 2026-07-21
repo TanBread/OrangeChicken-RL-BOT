@@ -93,7 +93,8 @@ def trainer_process_fn(ctrl_pipe, resp_pipe, device, n_epochs, gamma, gae_lambda
             nn.utils.clip_grad_norm_(model.parameters(), 0.5)
             optimizer.step()
         train_time = time.time() - t0
-        resp_pipe.send(train_time)
+        new_state = {k: v.cpu() for k, v in model.state_dict().items()}
+        resp_pipe.send((train_time, new_state))
 
     resp_pipe.send(None)
 
@@ -159,7 +160,7 @@ def env_worker(q_in, q_out, n_envs, stats_queue):
 
 def rl(total_games=100, save_every=10, n_workers=8, total_envs=192,
        gamma=0.99, gae_lambda=0.95, clip_range=0.2, ent_coef=0.01,
-       vf_coef=0.5, lr=3e-4, n_epochs=2, batch_steps=32):
+       vf_coef=0.5, lr=3e-4, n_epochs=2, batch_steps=32, time_limit=None):
     from env import OBS_SIZE, ACT_SIZE
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -222,8 +223,9 @@ def rl(total_games=100, save_every=10, n_workers=8, total_envs=192,
     global_step = 0
     train_start = time.time()
     training = False
+    deadline = train_start + time_limit if time_limit else float('inf')
 
-    while games_done < total_games:
+    while games_done < total_games and time.time() < deadline:
         obs_tensor = torch.tensor(np.array(all_obs), dtype=torch.float32, device=device)
         actions, log_probs, values = model.get_actions_and_values(obs_tensor)
 
@@ -293,8 +295,10 @@ def rl(total_games=100, save_every=10, n_workers=8, total_envs=192,
             training = True
 
         if training and resp_recv.poll():
-            train_time = resp_recv.recv()
-            if train_time is not None:
+            result = resp_recv.recv()
+            if result is not None:
+                train_time, new_state = result
+                model.load_state_dict({k: v.to(device) for k, v in new_state.items()})
                 training = False
 
     ctrl_send.send(None)
@@ -333,8 +337,10 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=3e-4)
     parser.add_argument("--batch-steps", type=int, default=32)
     parser.add_argument("--epochs", type=int, default=2)
+    parser.add_argument("--time", type=float, default=None, help="Time limit in seconds")
 
     args = parser.parse_args()
     rl(total_games=args.games, save_every=args.save_every,
        n_workers=args.cores, total_envs=args.envs, lr=args.lr,
-       batch_steps=args.batch_steps, n_epochs=args.epochs)
+       batch_steps=args.batch_steps, n_epochs=args.epochs,
+       time_limit=args.time)

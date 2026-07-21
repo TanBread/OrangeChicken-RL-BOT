@@ -2,4 +2,9 @@ __pycache__/
 rocketsim_src/
 logs/
 models/
+data/
+replay_files/
+replay_data/
 *.pyc
+benchmark_config.txt
+bench_debug.txt
