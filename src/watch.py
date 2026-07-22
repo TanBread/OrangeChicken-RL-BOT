@@ -5,8 +5,8 @@ from pygame.locals import *
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from collections import deque
-from env import make_env, OBS_SIZE, ACT_SIZE
-from collect import ActorCritic
+from .env import make_env, OBS_SIZE, ACT_SIZE
+from .collect import ActorCritic
 import math
 
 BLUE_COLOR = (0.2, 0.6, 1.0)

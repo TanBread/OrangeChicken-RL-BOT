@@ -1,7 +1,7 @@
 import time, torch, numpy as np, sys
 from multiprocessing import Process, Queue
-from env import make_env, OBS_SIZE, ACT_SIZE
-from collect import ActorCritic
+from src.env import make_env, OBS_SIZE, ACT_SIZE
+from src.collect import ActorCritic
 
 
 def env_worker(q_in, q_out, n_envs):

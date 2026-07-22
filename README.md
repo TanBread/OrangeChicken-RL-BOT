@@ -14,7 +14,7 @@ A Rocket League reinforcement learning bot trained with PPO using RLGym and Rock
 
 - Python 3.10+
 - Rocket League installed
-- GPU recommended (CUDA supported)
+- GPU recommended (CUDA ONLY)
 
 ## Install
 

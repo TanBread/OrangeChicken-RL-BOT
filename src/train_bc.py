@@ -7,8 +7,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from pathlib import Path
-from collect import ActorCritic
-from env import OBS_SIZE, ACT_SIZE
+from .collect import ActorCritic
+from .env import OBS_SIZE, ACT_SIZE
 
 
 MODEL_DIR = Path("models")

@@ -11,8 +11,9 @@ from pathlib import Path
 from multiprocessing import Process, Queue, Pipe
 
 
-MODEL_DIR = Path("models")
-LOG_DIR = Path("logs")
+PROJECT_DIR = Path(__file__).parent.parent
+MODEL_DIR = PROJECT_DIR / "models"
+LOG_DIR = PROJECT_DIR / "logs"
 
 
 class ActorCritic(nn.Module):
@@ -112,7 +113,7 @@ def trainer_process_fn(ctrl_pipe, resp_pipe, device, n_epochs, gamma, gae_lambda
 
 
 def env_worker(q_in, q_out, n_envs, stats_queue, orange_size=1):
-    from env import make_env
+    from .env import make_env
 
     envs = [make_env(team_size=1, orange_size=orange_size, tick_skip=32) for _ in range(n_envs)]
     obs_list = []
@@ -184,7 +185,7 @@ def env_worker(q_in, q_out, n_envs, stats_queue, orange_size=1):
 def rl(total_games=100, save_every=10, n_workers=8, total_envs=192,
        gamma=0.99, gae_lambda=0.95, clip_range=0.2, ent_coef=0.01,
        vf_coef=0.5, lr=3e-4, n_epochs=6, batch_steps=96, time_limit=None, orange_size=1):
-    from env import OBS_SIZE, ACT_SIZE
+    from .env import OBS_SIZE, ACT_SIZE
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     envs_per_worker = total_envs // n_workers
