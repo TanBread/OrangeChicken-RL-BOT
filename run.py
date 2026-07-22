@@ -84,6 +84,7 @@ if __name__ == "__main__":
         print("\nReplay options:")
         print("  1. Download and extract (Ballchasing API)")
         print("  2. Extract from folder")
+        print("  3. Batch extract (1v1, 2v2, 3v3 subfolders)")
         replay_mode = input("\n? [1]: ").strip() or "1"
 
         if replay_mode == "1":
@@ -115,12 +116,20 @@ if __name__ == "__main__":
             subprocess.run([sys.executable, str(SRC_DIR / "extract_replay.py"), "--input", "replay_files", "--output", "replay_data"])
             print("\nDone! Replays downloaded and extracted to replay_data/")
 
-        else:
+        elif replay_mode == "2":
             input_dir = input("Replay folder? [replay_files]: ").strip() or "replay_files"
             output_dir = input("Output folder? [replay_data]: ").strip() or "replay_data"
             workers = input("Workers? [16]: ").strip() or "16"
             print(f"\nExtracting replays from {input_dir}...")
             subprocess.run([sys.executable, str(SRC_DIR / "extract_replay.py"), "--input", input_dir, "--output", output_dir, "--workers", workers])
+            print(f"\nDone! Data saved to {output_dir}/")
+
+        else:
+            input_dir = input("Base replay folder? [replay_files]: ").strip() or "replay_files"
+            output_dir = input("Output folder? [replay_data]: ").strip() or "replay_data"
+            workers = input("Workers? [16]: ").strip() or "16"
+            print(f"\nBatch extracting from {input_dir}/1v1, {input_dir}/2v2, {input_dir}/3v3...")
+            subprocess.run([sys.executable, str(SRC_DIR / "extract_all.py"), "--input", input_dir, "--output", output_dir, "--workers", workers])
             print(f"\nDone! Data saved to {output_dir}/")
 
     elif mode == "4":
