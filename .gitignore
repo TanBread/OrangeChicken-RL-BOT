@@ -1,11 +1,33 @@
+# Python
 __pycache__/
-rocketsim_src/
-logs/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+venv/
+.env
+
+# Models & Logs
 models/
+logs/
+*.pt
+*.zip
+
+# Data
 data/
 replay_files/
 replay_data/
-*.pyc
-*.zip
+replay_files/
+
+# Config
 benchmark_config.txt
 bench_debug.txt
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
