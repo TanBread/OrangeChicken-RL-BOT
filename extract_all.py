@@ -7,13 +7,13 @@ from pathlib import Path
 os.environ["RAYON_NUM_THREADS"] = "1"
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--cores", type=int, default=20, help="Number of CPU cores to use")
+parser.add_argument("--workers", type=int, default=32, help="Number of workers to use (2 per core, 16 core limit)")
 args = parser.parse_args()
 
 INPUT_BASE = Path(r"D:\RLReplays")
 OUTPUT = Path(__file__).parent / "replay_data"
 PROCESSED = OUTPUT / "processed_replays.txt"
-WORKERS = args.cores
+WORKERS = args.workers
 
 modes = ["1v1", "2v2", "3v3"]
 
