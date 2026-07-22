@@ -11,15 +11,15 @@ def get_envs():
 
 if __name__ == "__main__":
     print("Installing dependencies...")
-    subprocess.run([sys.executable, "-m", "pip", "install", "numpy>=2.0.0"])
-    subprocess.run([sys.executable, "-m", "pip", "install", "--no-deps", "rlgym-rocket-league"])
-    subprocess.run([sys.executable, "-m", "pip", "install", "gymnasium>=0.28.0", "torch>=1.12.0"])
-    subprocess.run([sys.executable, "-m", "pip", "install", "streamlit>=1.28.0", "pandas>=2.0.0"])
+    subprocess.run([sys.executable, "-m", "pip", "install", "numpy>=2.0.0"], capture_output=True)
+    subprocess.run([sys.executable, "-m", "pip", "install", "--no-deps", "rlgym-rocket-league"], capture_output=True)
+    subprocess.run([sys.executable, "-m", "pip", "install", "gymnasium>=0.28.0", "torch>=1.12.0"], capture_output=True)
+    subprocess.run([sys.executable, "-m", "pip", "install", "streamlit>=1.28.0", "pandas>=2.0.0", "plotly>=5.0.0"], capture_output=True)
 
     print("\nSelect mode:")
     print("  1. Train")
     print("  2. Train from Replays + RL")
-    print("  3. Download & Extract Replays")
+    print("  3. Download Replays")
     print("  4. Dashboard")
     print("  5. Watch Bot")
     mode = input("\nMode? [1]: ").strip() or "1"
@@ -105,12 +105,15 @@ if __name__ == "__main__":
             "7": "grand-champion",
         }
         min_rank = rank_map.get(rank_choice, "grand-champion")
-        print(f"\nDownloading 1v1 replays from Ballchasing...")
+
+        print(f"\nDownloading {count} replays from Ballchasing...")
         subprocess.run([sys.executable, "download_replays.py", "--token", token,
                         "--playlist", "ranked-duels", "--count", count,
                         "--min-rank", min_rank])
-        print(f"\nExtracting replays...")
+
+        print(f"\nExtracting replay data...")
         subprocess.run([sys.executable, "extract_replay.py", "--input", "replay_files", "--output", "replay_data"])
+        print("\nDone! Replays downloaded and extracted to replay_data/")
 
     elif mode == "4":
         print("\nOpening dashboard on http://localhost:8501...")
