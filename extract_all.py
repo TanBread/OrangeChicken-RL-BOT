@@ -7,7 +7,7 @@ from pathlib import Path
 os.environ["RAYON_NUM_THREADS"] = "1"
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--cores", type=int, default=8, help="Number of CPU cores to use")
+parser.add_argument("--cores", type=int, default=20, help="Number of CPU cores to use")
 args = parser.parse_args()
 
 INPUT_BASE = Path(r"D:\RLReplays")
