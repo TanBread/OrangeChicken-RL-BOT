@@ -6,5 +6,6 @@ data/
 replay_files/
 replay_data/
 *.pyc
+*.zip
 benchmark_config.txt
 bench_debug.txt
