@@ -113,7 +113,6 @@ def download_replays(token, output_dir="replay_files", count=50,
         except Exception as e:
             print(f"Error: {e}")
             time.sleep(2)
-            time.sleep(2)
 
     print(f"\nDone! {downloaded}/{len(replays)} replays saved to {output}/")
 

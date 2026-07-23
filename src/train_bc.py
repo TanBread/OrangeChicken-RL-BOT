@@ -11,8 +11,9 @@ from .collect import ActorCritic
 from .env import OBS_SIZE, ACT_SIZE
 
 
-MODEL_DIR = Path("models")
-LOG_DIR = Path("logs")
+PROJECT_DIR = Path(__file__).parent.parent
+MODEL_DIR = PROJECT_DIR / "models"
+LOG_DIR = PROJECT_DIR / "logs"
 
 
 def train_bc(data_dir="replay_data", epochs=50, batch_size=256, lr=3e-4,

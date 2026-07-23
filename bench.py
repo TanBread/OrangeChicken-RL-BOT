@@ -57,7 +57,8 @@ def run_benchmark(n_envs, groups, duration=10):
         q_outs.append(q_out)
         workers.append(p)
 
-    model = ActorCritic(OBS_SIZE, ACT_SIZE).cuda()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = ActorCritic(OBS_SIZE, ACT_SIZE).to(device)
 
     all_obs = []
     for g in range(groups):
@@ -66,7 +67,7 @@ def run_benchmark(n_envs, groups, duration=10):
 
     start = time.time()
     while time.time() - start < duration:
-        obs_tensor = torch.tensor(np.array(all_obs), dtype=torch.float32).cuda()
+        obs_tensor = torch.tensor(np.array(all_obs), dtype=torch.float32).to(device)
         with torch.no_grad():
             actions, _, _ = model.get_actions_and_values(obs_tensor)
 
@@ -94,7 +95,11 @@ def run_benchmark(n_envs, groups, duration=10):
 
 
 if __name__ == '__main__':
-    torch.cuda.set_device(0)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if device.type == "cuda":
+        torch.cuda.set_device(0)
+    else:
+        print("Warning: No CUDA GPU found, benchmark will be slow")
     cores = int(input("How many cores? [16]: ").strip() or "16")
     runs = int(input("Runs per config? [3]: ").strip() or "3")
 

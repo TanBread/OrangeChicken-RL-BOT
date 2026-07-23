@@ -2,7 +2,7 @@ import streamlit as st
 import json
 from pathlib import Path
 
-BASE_DIR = Path(__file__).parent.absolute()
+BASE_DIR = Path(__file__).parent.parent
 LOG_DIR = BASE_DIR / "logs"
 METRICS_FILE = LOG_DIR / "metrics.jsonl"
 
