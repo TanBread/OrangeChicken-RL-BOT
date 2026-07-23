@@ -156,7 +156,7 @@ if __name__ == "__main__":
         print("Warning: No CUDA GPU found, benchmark will be slow")
 
     cores = int(input("\nHow many cores to use? [16]: ").strip() or "16")
-    duration = int(input("Seconds per test? [15]: ").strip() or "15")
+    duration = int(input("Seconds per test? [60]: ").strip() or "60")
 
     configs = list(range(5, 201, 5))
     print(f"\nTesting {len(configs)} configs with {cores} cores, {duration}s each")
