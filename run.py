@@ -1,3 +1,5 @@
+import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -85,6 +87,7 @@ if __name__ == "__main__":
         print("  1. Download and extract (Ballchasing API)")
         print("  2. Extract from folder")
         print("  3. Batch extract (1v1, 2v2, 3v3 subfolders)")
+        print("  4. Import replays to replay_files/")
         replay_mode = input("\n? [1]: ").strip() or "1"
 
         if replay_mode == "1":
@@ -123,6 +126,25 @@ if __name__ == "__main__":
             print(f"\nExtracting replays from {input_dir}...")
             subprocess.run([sys.executable, str(SRC_DIR / "extract_replay.py"), "--input", input_dir, "--output", output_dir, "--workers", workers])
             print(f"\nDone! Data saved to {output_dir}/")
+
+        elif replay_mode == "4":
+            source = input("Source folder with .replay files: ").strip()
+            if not source:
+                print("No folder specified.")
+            elif not os.path.isdir(source):
+                print(f"Folder not found: {source}")
+            else:
+                dest = Path("replay_files")
+                dest.mkdir(exist_ok=True)
+                replays = list(Path(source).glob("*.replay"))
+                if not replays:
+                    print(f"No .replay files found in {source}")
+                else:
+                    print(f"Found {len(replays)} replays. Copying to replay_files/...")
+                    for i, f in enumerate(replays):
+                        shutil.copy2(f, dest / f.name)
+                        print(f"  [{i+1}/{len(replays)}] {f.name}")
+                    print(f"\nDone! {len(replays)} replays imported to replay_files/")
 
         else:
             input_dir = input("Base replay folder? [replay_files]: ").strip() or "replay_files"

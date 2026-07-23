@@ -13,7 +13,9 @@ from collect import ActorCritic
 PROJECT_DIR = Path(__file__).parent
 
 
-def env_worker(q_in, q_out, n_envs, stats_queue):
+def env_worker(q_in, q_out, n_envs, stats_queue, offset=0):
+    if offset > 0:
+        time.sleep(offset)
     envs = [make_env(team_size=1, tick_skip=32) for _ in range(n_envs)]
     obs_list = []
 
@@ -23,7 +25,6 @@ def env_worker(q_in, q_out, n_envs, stats_queue):
         agent_id = [a for a in agent_ids if "blue" in a][0]
         obs_list.append((obs_dict, agent_ids, agent_id))
 
-    games_done = [0] * n_envs
     ep_rewards = [0.0] * n_envs
 
     def get_obs():
@@ -48,7 +49,6 @@ def env_worker(q_in, q_out, n_envs, stats_queue):
 
             if done:
                 stats_queue.put({"reward": ep_rewards[i]})
-                games_done[i] += 1
                 ep_rewards[i] = 0.0
                 next_obs_dict = envs[i].reset()
                 agent_ids = list(next_obs_dict.keys())
@@ -61,17 +61,17 @@ def env_worker(q_in, q_out, n_envs, stats_queue):
     q_out.put("done")
 
 
-def run_single_config(envs_per_core, n_cores, duration=15):
-    total_envs = envs_per_core * n_cores
+def run_single_config(envs_per_core, n_cores, min_games=3):
     q_ins = []
     q_outs = []
     workers = []
     stats_queue = Queue()
 
-    for _ in range(n_cores):
+    for i in range(n_cores):
         q_in = Queue()
         q_out = Queue()
-        p = Process(target=env_worker, args=(q_in, q_out, envs_per_core, stats_queue), daemon=True)
+        offset = i * 0.1
+        p = Process(target=env_worker, args=(q_in, q_out, envs_per_core, stats_queue, offset))
         p.start()
         q_ins.append(q_in)
         q_outs.append(q_out)
@@ -89,7 +89,7 @@ def run_single_config(envs_per_core, n_cores, duration=15):
     total_reward = 0.0
     start = time.time()
 
-    while time.time() - start < duration:
+    while games_done < min_games:
         obs_tensor = torch.tensor(np.array(all_obs), dtype=torch.float32, device=device)
         with torch.no_grad():
             actions, _, _ = model.get_actions_and_values(obs_tensor)
@@ -113,38 +113,22 @@ def run_single_config(envs_per_core, n_cores, duration=15):
 
     for q in q_ins:
         q.put("stop")
-
     for p in workers:
         p.join(timeout=5)
         if p.is_alive():
             p.terminate()
 
-    games_per_min = (games_done / elapsed) * 60 if elapsed > 0 else 0
     games_per_sec = games_done / elapsed if elapsed > 0 else 0
-    tg_tt_ratio = games_per_sec / elapsed if elapsed > 0 else 0
     avg_reward = total_reward / games_done if games_done > 0 else 0
 
     return {
         "envs_per_core": envs_per_core,
-        "total_envs": total_envs,
+        "total_envs": n_cores * envs_per_core,
         "games": games_done,
-        "games_per_min": games_per_min,
-        "tg_tt_ratio": tg_tt_ratio,
+        "games_per_sec": games_per_sec,
         "avg_reward": avg_reward,
         "elapsed": elapsed,
     }
-
-
-def run_benchmark_batch(configs, n_cores, duration=15):
-    results = []
-
-    for envs_per_core in configs:
-        print(f"  Testing {envs_per_core} envs/core ({envs_per_core * n_cores} total)...", end=" ", flush=True)
-        result = run_single_config(envs_per_core, n_cores, duration)
-        results.append(result)
-        print(f"{result['games_per_min']:.1f} games/min | TG/s:TT = {result['tg_tt_ratio']:.4f} | avg reward: {result['avg_reward']:.0f}")
-
-    return results
 
 
 if __name__ == "__main__":
@@ -155,31 +139,48 @@ if __name__ == "__main__":
     else:
         print("Warning: No CUDA GPU found, benchmark will be slow")
 
-    cores = int(input("\nHow many cores to use? [16]: ").strip() or "16")
-    duration = int(input("Seconds per test? [60]: ").strip() or "60")
+    n_cores = 16
+    min_games = int(input("\nMin games per config? [3]: ").strip() or "3")
 
-    configs = list(range(5, 201, 5))
-    print(f"\nTesting {len(configs)} configs with {cores} cores, {duration}s each")
-    print(f"Estimated time: ~{len(configs) * duration // 60} min\n")
+    configs = list(range(1, 151))
 
-    print("=" * 60)
-    results = run_benchmark_batch(configs, cores, duration)
-    print("=" * 60)
+    print(f"{len(configs)} configs | {n_cores} cores each | {min_games} games min")
+    print("Stopping early once TG/s plateaus\n")
+    print("=" * 70)
 
-    best = max(results, key=lambda r: r["tg_tt_ratio"])
+    all_results = []
+    best_tgs = 0
 
-    print(f"\n{'='*60}")
-    print(f"BEST: {best['envs_per_core']} envs/core ({best['total_envs']} total)")
-    print(f"  {best['games_per_min']:.1f} games/min | TG/s:TT = {best['tg_tt_ratio']:.4f}")
+    for i, envs_per_core in enumerate(configs):
+        total = n_cores * envs_per_core
+        print(f"[{i+1}/{len(configs)}] {envs_per_core}/core ({total} total)...", end=" ", flush=True)
+        result = run_single_config(envs_per_core, n_cores, min_games)
+        all_results.append(result)
+        print(f"{result['games']} games in {result['elapsed']:.1f}s | {result['games_per_sec']:.2f} TG/s | reward: {result['avg_reward']:.0f}")
+
+        if result["games_per_sec"] > best_tgs:
+            best_tgs = result["games_per_sec"]
+
+        if len(all_results) >= 4:
+            last3 = [r["games_per_sec"] for r in all_results[-3:]]
+            trend = last3[2] - last3[0]
+            if trend < 0:
+                print(f"\nTG/s trending down (avg last 3: {sum(last3)/3:.2f}). Stopping at {envs_per_core}/core.")
+                break
+
+    print("\n" + "=" * 70)
+
+    best = max(all_results, key=lambda r: r["games_per_sec"])
+
+    print(f"\nBEST: {best['envs_per_core']}/core ({best['total_envs']} total)")
+    print(f"  {best['games_per_sec']:.2f} TG/s")
     print(f"  {best['games']} games in {best['elapsed']:.1f}s | Avg reward: {best['avg_reward']:.0f}")
-    print(f"{'='*60}")
 
-    print(f"\nAll results:")
-    print(f"{'Envs/Core':>10} {'Total':>8} {'Games/min':>10} {'TG/s:TT':>10} {'Avg Reward':>12}")
-    print("-" * 52)
-    for r in sorted(results, key=lambda x: x["envs_per_core"]):
-        marker = " <-- BEST" if r == best else ""
-        print(f"{r['envs_per_core']:>10} {r['total_envs']:>8} {r['games_per_min']:>10.1f} {r['tg_tt_ratio']:>10.4f} {r['avg_reward']:>12.0f}{marker}")
+    print(f"\n{'Envs/Core':>10} {'Total':>8} {'Games':>6} {'Time':>6} {'TG/s':>8} {'Reward':>8}")
+    print("-" * 55)
+    for r in sorted(all_results, key=lambda x: x["envs_per_core"]):
+        marker = " <--" if r == best else ""
+        print(f"{r['envs_per_core']:>10} {r['total_envs']:>8} {r['games']:>6} {r['elapsed']:>5.1f}s {r['games_per_sec']:>8.2f} {r['avg_reward']:>8.0f}{marker}")
 
     config_path = PROJECT_DIR / "benchmark_config.txt"
     with open(config_path, "w") as f:
