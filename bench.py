@@ -120,6 +120,8 @@ def run_single_config(envs_per_core, n_cores, duration=15):
             p.terminate()
 
     games_per_min = (games_done / elapsed) * 60 if elapsed > 0 else 0
+    games_per_sec = games_done / elapsed if elapsed > 0 else 0
+    tg_tt_ratio = games_per_sec / elapsed if elapsed > 0 else 0
     avg_reward = total_reward / games_done if games_done > 0 else 0
 
     return {
@@ -127,6 +129,7 @@ def run_single_config(envs_per_core, n_cores, duration=15):
         "total_envs": total_envs,
         "games": games_done,
         "games_per_min": games_per_min,
+        "tg_tt_ratio": tg_tt_ratio,
         "avg_reward": avg_reward,
         "elapsed": elapsed,
     }
@@ -139,7 +142,7 @@ def run_benchmark_batch(configs, n_cores, duration=15):
         print(f"  Testing {envs_per_core} envs/core ({envs_per_core * n_cores} total)...", end=" ", flush=True)
         result = run_single_config(envs_per_core, n_cores, duration)
         results.append(result)
-        print(f"{result['games_per_min']:.1f} games/min | avg reward: {result['avg_reward']:.0f}")
+        print(f"{result['games_per_min']:.1f} games/min | TG/s:TT = {result['tg_tt_ratio']:.4f} | avg reward: {result['avg_reward']:.0f}")
 
     return results
 
@@ -163,20 +166,20 @@ if __name__ == "__main__":
     results = run_benchmark_batch(configs, cores, duration)
     print("=" * 60)
 
-    best = max(results, key=lambda r: r["games_per_min"])
+    best = max(results, key=lambda r: r["tg_tt_ratio"])
 
     print(f"\n{'='*60}")
     print(f"BEST: {best['envs_per_core']} envs/core ({best['total_envs']} total)")
-    print(f"  {best['games_per_min']:.1f} games/min | {best['games']} games in {best['elapsed']:.1f}s")
-    print(f"  Avg reward: {best['avg_reward']:.0f}")
+    print(f"  {best['games_per_min']:.1f} games/min | TG/s:TT = {best['tg_tt_ratio']:.4f}")
+    print(f"  {best['games']} games in {best['elapsed']:.1f}s | Avg reward: {best['avg_reward']:.0f}")
     print(f"{'='*60}")
 
     print(f"\nAll results:")
-    print(f"{'Envs/Core':>10} {'Total':>8} {'Games/min':>10} {'Avg Reward':>12}")
-    print("-" * 42)
+    print(f"{'Envs/Core':>10} {'Total':>8} {'Games/min':>10} {'TG/s:TT':>10} {'Avg Reward':>12}")
+    print("-" * 52)
     for r in sorted(results, key=lambda x: x["envs_per_core"]):
         marker = " <-- BEST" if r == best else ""
-        print(f"{r['envs_per_core']:>10} {r['total_envs']:>8} {r['games_per_min']:>10.1f} {r['avg_reward']:>12.0f}{marker}")
+        print(f"{r['envs_per_core']:>10} {r['total_envs']:>8} {r['games_per_min']:>10.1f} {r['tg_tt_ratio']:>10.4f} {r['avg_reward']:>12.0f}{marker}")
 
     config_path = PROJECT_DIR / "benchmark_config.txt"
     with open(config_path, "w") as f:
